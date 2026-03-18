@@ -135,9 +135,9 @@
   <div id="hint">Tap the beat — or press Spacebar / Enter</div>
 
 <script>
-  const IDLE_TIMEOUT = 3000; // ms without tap → reset
+  const IDLE_TIMEOUT = 3000;
   const MIN_TAPS = 2;
-  const MAX_HISTORY = 8; // use last N intervals for rolling median
+  const MAX_HISTORY = 8;
 
   let taps = [];
   let idleTimer = null;
@@ -173,7 +173,6 @@
   function tap() {
     const now = performance.now();
 
-    // Reset if idle too long
     if (taps.length && (now - taps[taps.length - 1]) > IDLE_TIMEOUT) {
       taps = [];
     }
@@ -185,22 +184,15 @@
     tapCountEl.textContent = count;
 
     if (count >= MIN_TAPS) {
-      // Calculate all intervals
       const intervals = [];
       for (let i = 1; i < taps.length; i++) {
         intervals.push(taps[i] - taps[i - 1]);
       }
-
-      // Rolling median (last N intervals)
       const recent = intervals.slice(-MAX_HISTORY);
-      const bpm = calcBPM(recent);
-      bpmDisplay.textContent = Math.round(bpm);
-
-      // All-time average (all intervals)
+      bpmDisplay.textContent = Math.round(calcBPM(recent));
       avgDisplay.textContent = Math.round(allTimeAvgBPM(intervals));
     }
 
-    // Reset idle timer
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
       taps = [];
@@ -218,7 +210,6 @@
     avgDisplay.textContent = '--';
   }
 
-  // Button press visual feedback
   tapBtn.addEventListener('pointerdown', () => tapBtn.classList.add('pressed'));
   tapBtn.addEventListener('pointerup',   () => tapBtn.classList.remove('pressed'));
   tapBtn.addEventListener('pointerleave',() => tapBtn.classList.remove('pressed'));
@@ -226,7 +217,6 @@
   tapBtn.addEventListener('click', tap);
   resetBtn.addEventListener('click', reset);
 
-  // Keyboard: Space or Enter — with button visual feedback
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' || e.code === 'Enter') {
       e.preventDefault();
