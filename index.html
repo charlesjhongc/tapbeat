@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BPM Tap Counter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    #bpm-display {
+      font-size: clamp(5rem, 20vw, 10rem);
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      transition: color 0.1s;
+      color: #fff;
+    }
+
+    #bpm-display.flash {
+      color: #ff6b35;
+    }
+
+    #bpm-label {
+      font-size: 1.4rem;
+      color: #555;
+      letter-spacing: 0.15em;
+      margin-top: -1rem;
+    }
+
+    #tap-btn {
+      width: min(320px, 85vw);
+      height: min(320px, 85vw);
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
+      box-shadow:
+        6px 6px 16px #000,
+        -4px -4px 12px #333,
+        inset 0 1px 0 #3a3a3a;
+      cursor: pointer;
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: #aaa;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: transform 0.06s, box-shadow 0.06s, background 0.06s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    #tap-btn:active,
+    #tap-btn.pressed {
+      transform: scale(0.96);
+      box-shadow:
+        2px 2px 8px #000,
+        -2px -2px 6px #2a2a2a,
+        inset 0 2px 4px #000;
+      background: linear-gradient(145deg, #1a1a1a, #252525);
+      color: #ff6b35;
+    }
+
+    #info-row {
+      display: flex;
+      gap: 2.5rem;
+      color: #555;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+    }
+
+    #info-row span { text-align: center; }
+    #info-row strong { display: block; color: #888; font-size: 1.05rem; }
+
+    #reset-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #555;
+      padding: 0.5rem 1.8rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    #reset-btn:hover { border-color: #666; color: #aaa; }
+
+    #hint {
+      font-size: 0.75rem;
+      color: #333;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>BPM Tap</h1>
+
+  <div id="bpm-display">--</div>
+  <div id="bpm-label">BPM</div>
+
+  <button id="tap-btn" aria-label="Tap to measure BPM">TAP</button>
+
+  <div id="info-row">
+    <span><strong id="tap-count">0</strong>taps</span>
+    <span><strong id="avg-display">--</strong>average</span>
+  </div>
+
+  <button id="reset-btn">Reset</button>
+
+  <div id="hint">Tap the beat — or press Spacebar / Enter</div>
+
+<script>
+  const IDLE_TIMEOUT = 3000; // ms without tap → reset
+  const MIN_TAPS = 2;
+  const MAX_HISTORY = 8; // use last N intervals for rolling average
+
+  let taps = [];
+  let idleTimer = null;
+  let flashTimer = null;
+
+  const bpmDisplay = document.getElementById('bpm-display');
+  const tapCountEl = document.getElementById('tap-count');
+  const avgDisplay  = document.getElementById('avg-display');
+  const tapBtn      = document.getElementById('tap-btn');
+  const resetBtn    = document.getElementById('reset-btn');
+
+  function median(arr) {
+    const s = [...arr].sort((a, b) => a - b);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+
+  function calcBPM(intervals) {
+    return 60000 / median(intervals);
+  }
+
+  function flash() {
+    bpmDisplay.classList.add('flash');
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => bpmDisplay.classList.remove('flash'), 120);
+  }
+
+  function tap() {
+    const now = performance.now();
+
+    // Reset if idle too long
+    if (taps.length && (now - taps[taps.length - 1]) > IDLE_TIMEOUT) {
+      taps = [];
+    }
+
+    taps.push(now);
+    flash();
+
+    const count = taps.length;
+    tapCountEl.textContent = count;
+
+    if (count >= MIN_TAPS) {
+      // Calculate intervals
+      const intervals = [];
+      for (let i = 1; i < taps.length; i++) {
+        intervals.push(taps[i] - taps[i - 1]);
+      }
+      // Rolling window
+      const recent = intervals.slice(-MAX_HISTORY);
+      const bpm = calcBPM(recent);
+      const rounded = Math.round(bpm);
+      bpmDisplay.textContent = rounded;
+      avgDisplay.textContent = rounded;
+    }
+
+    // Reset idle timer
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      taps = [];
+      tapCountEl.textContent = '0';
+      bpmDisplay.textContent = '--';
+      avgDisplay.textContent = '--';
+    }, IDLE_TIMEOUT);
+  }
+
+  function reset() {
+    clearTimeout(idleTimer);
+    taps = [];
+    tapCountEl.textContent = '0';
+    bpmDisplay.textContent = '--';
+    avgDisplay.textContent = '--';
+  }
+
+  // Button press visual feedback
+  tapBtn.addEventListener('pointerdown', () => tapBtn.classList.add('pressed'));
+  tapBtn.addEventListener('pointerup',   () => tapBtn.classList.remove('pressed'));
+  tapBtn.addEventListener('pointerleave',() => tapBtn.classList.remove('pressed'));
+
+  tapBtn.addEventListener('click', tap);
+  resetBtn.addEventListener('click', reset);
+
+  // Keyboard: Space or Enter
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      tap();
+    }
+  });
+</script>
+</body>
+</html>
