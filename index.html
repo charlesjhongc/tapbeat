@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Free online BPM tap tempo calculator">
   <title>Tapbeat</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -117,7 +118,7 @@
 </head>
 <body>
 
-  <h1>BPM Tap</h1>
+  <h1>Tapbeat</h1>
 
   <div id="bpm-display">--</div>
   <div id="bpm-label">BPM</div>
@@ -126,7 +127,7 @@
 
   <div id="info-row">
     <span><strong id="tap-count">0</strong>taps</span>
-    <span><strong id="avg-display">--</strong>average</span>
+    <span><strong id="avg-display">--</strong>all-time avg</span>
   </div>
 
   <button id="reset-btn">Reset</button>
@@ -136,7 +137,7 @@
 <script>
   const IDLE_TIMEOUT = 3000; // ms without tap → reset
   const MIN_TAPS = 2;
-  const MAX_HISTORY = 8; // use last N intervals for rolling average
+  const MAX_HISTORY = 8; // use last N intervals for rolling median
 
   let taps = [];
   let idleTimer = null;
@@ -156,6 +157,11 @@
 
   function calcBPM(intervals) {
     return 60000 / median(intervals);
+  }
+
+  function allTimeAvgBPM(intervals) {
+    const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    return 60000 / avg;
   }
 
   function flash() {
@@ -179,17 +185,19 @@
     tapCountEl.textContent = count;
 
     if (count >= MIN_TAPS) {
-      // Calculate intervals
+      // Calculate all intervals
       const intervals = [];
       for (let i = 1; i < taps.length; i++) {
         intervals.push(taps[i] - taps[i - 1]);
       }
-      // Rolling window
+
+      // Rolling median (last N intervals)
       const recent = intervals.slice(-MAX_HISTORY);
       const bpm = calcBPM(recent);
-      const rounded = Math.round(bpm);
-      bpmDisplay.textContent = rounded;
-      avgDisplay.textContent = rounded;
+      bpmDisplay.textContent = Math.round(bpm);
+
+      // All-time average (all intervals)
+      avgDisplay.textContent = Math.round(allTimeAvgBPM(intervals));
     }
 
     // Reset idle timer
@@ -218,11 +226,13 @@
   tapBtn.addEventListener('click', tap);
   resetBtn.addEventListener('click', reset);
 
-  // Keyboard: Space or Enter
+  // Keyboard: Space or Enter — with button visual feedback
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' || e.code === 'Enter') {
       e.preventDefault();
+      tapBtn.classList.add('pressed');
       tap();
+      setTimeout(() => tapBtn.classList.remove('pressed'), 100);
     }
   });
 </script>
