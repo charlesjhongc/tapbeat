@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Free online BPM tap tempo calculator">
+  <meta name="description" content="Free online BPM tap tempo calculator and metronome">
   <title>Tapbeat</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,8 +16,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 2rem;
+      justify-content: safe center;
+      padding: 2rem 0;
+      gap: 1.8rem;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -30,30 +31,69 @@
       color: #888;
     }
 
-    #bpm-display {
+    /* ── Mode tabs ─────────────────────────────── */
+    .mode-tabs {
+      display: flex;
+      background: #161616;
+      border: 1px solid #242424;
+      border-radius: 2rem;
+      padding: 4px;
+      gap: 2px;
+    }
+
+    .mode-tab {
+      background: none;
+      border: none;
+      color: #444;
+      padding: 0.4rem 1.5rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: background 0.2s, color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mode-tab.active {
+      background: #2a2a2a;
+      color: #ddd;
+    }
+
+    /* ── Views ─────────────────────────────────── */
+    .view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .view.active { display: flex; }
+
+    /* ── BPM number ─────────────────────────────── */
+    .bpm-display {
       font-size: clamp(5rem, 20vw, 10rem);
       font-weight: 700;
       line-height: 1;
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.02em;
-      transition: color 0.1s;
+      transition: color 0.08s;
       color: #fff;
     }
 
-    #bpm-display.flash {
-      color: #ff6b35;
-    }
+    .bpm-display.flash { color: #ff6b35; }
 
-    #bpm-label {
+    .bpm-label {
       font-size: 1.4rem;
       color: #555;
       letter-spacing: 0.15em;
-      margin-top: -1rem;
+      margin-top: 0.2rem;
+      margin-bottom: 1.8rem;
     }
 
-    #tap-btn {
-      width: min(320px, 85vw);
-      height: min(320px, 85vw);
+    /* ── Shared big circle button ───────────────── */
+    .big-btn {
+      width: min(280px, 78vw);
+      height: min(280px, 78vw);
       border-radius: 50%;
       border: none;
       background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
@@ -67,13 +107,14 @@
       color: #aaa;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      transition: transform 0.06s, box-shadow 0.06s, background 0.06s;
+      transition: transform 0.06s, box-shadow 0.06s, background 0.06s, color 0.06s;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
+      margin-bottom: 1.8rem;
     }
 
-    #tap-btn:active,
-    #tap-btn.pressed {
+    .big-btn:active,
+    .big-btn.pressed {
       transform: scale(0.96);
       box-shadow:
         2px 2px 8px #000,
@@ -83,20 +124,22 @@
       color: #ff6b35;
     }
 
-    #info-row {
+    /* ── TAP view extras ────────────────────────── */
+    .info-row {
       display: flex;
       gap: 2.5rem;
       color: #555;
       font-size: 0.85rem;
       letter-spacing: 0.08em;
+      margin-bottom: 1.2rem;
     }
 
-    #info-row span { text-align: center; }
-    #info-row strong { display: block; color: #888; font-size: 1.05rem; }
+    .info-row span { text-align: center; }
+    .info-row strong { display: block; color: #888; font-size: 1.05rem; }
 
-    #reset-btn {
+    .secondary-btn {
       background: none;
-      border: 1px solid #333;
+      border: 1px solid #282828;
       color: #555;
       padding: 0.5rem 1.8rem;
       border-radius: 2rem;
@@ -105,136 +148,534 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       transition: border-color 0.2s, color 0.2s;
+      margin-bottom: 1rem;
     }
 
-    #reset-btn:hover { border-color: #666; color: #aaa; }
+    .secondary-btn:hover { border-color: #555; color: #aaa; }
 
-    #hint {
+    .hint {
       font-size: 0.75rem;
-      color: #333;
+      color: #2e2e2e;
       letter-spacing: 0.05em;
     }
+
+    /* ── METRONOME view extras ──────────────────── */
+    .beat-dots {
+      display: flex;
+      gap: 0.7rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .beat-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #222;
+      border: 1px solid #333;
+      transition: background 0.04s, transform 0.04s, border-color 0.04s;
+    }
+
+    .beat-dot.accent { border-color: #444; }
+
+    .beat-dot.lit {
+      background: #ff6b35;
+      border-color: #ff6b35;
+      transform: scale(1.5);
+    }
+
+    .beat-dot.accent.lit {
+      background: #ffaa66;
+      border-color: #ffaa66;
+      transform: scale(1.8);
+    }
+
+    /* Play button playing state */
+    #play-btn.playing {
+      color: #ff6b35;
+      box-shadow:
+        6px 6px 16px #000,
+        -4px -4px 12px #333,
+        inset 0 1px 0 #3a3a3a,
+        0 0 0 2px #ff6b3530;
+    }
+
+    #play-btn.beat-pulse {
+      background: linear-gradient(145deg, #1c1c1c, #272727);
+      color: #ff8855;
+    }
+
+    .bpm-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .adj-btn {
+      background: none;
+      border: 1px solid #242424;
+      color: #484848;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.12s, color 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .adj-btn:hover { border-color: #444; color: #999; }
+    .adj-btn:active { border-color: #ff6b35; color: #ff6b35; }
+
+    .adj-btn.wide {
+      width: 3rem;
+      border-radius: 1.5rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.02em;
+    }
+
+    .adj-divider {
+      width: 1px;
+      height: 1.1rem;
+      background: #242424;
+      margin: 0 0.2rem;
+    }
+
+    .time-sig-row {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .sig-btn {
+      background: none;
+      border: 1px solid #1e1e1e;
+      color: #3a3a3a;
+      padding: 0.3rem 0.75rem;
+      border-radius: 1rem;
+      cursor: pointer;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .sig-btn:hover { border-color: #3a3a3a; color: #777; }
+
+    .sig-btn.active {
+      border-color: #444;
+      background: #1c1c1c;
+      color: #bbb;
+    }
+
+    /* ── BPM inline input ────────────────────────── */
+    .bpm-display[role="button"] {
+      cursor: text;
+    }
+
+    .bpm-display[role="button"]:hover {
+      color: #ccc;
+    }
+
+    .bpm-input {
+      display: none;
+      font-size: clamp(5rem, 20vw, 10rem);
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      font-family: inherit;
+      background: none;
+      border: none;
+      border-bottom: 2px solid #ff6b35;
+      color: #fff;
+      text-align: center;
+      width: 4ch;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: textfield;
+    }
+
+    .bpm-input::-webkit-inner-spin-button,
+    .bpm-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .bpm-input.visible { display: block; }
   </style>
 </head>
 <body>
 
   <h1>Tapbeat</h1>
 
-  <div id="bpm-display">--</div>
-  <div id="bpm-label">BPM</div>
-
-  <button id="tap-btn" aria-label="Tap to measure BPM">TAP</button>
-
-  <div id="info-row">
-    <span><strong id="tap-count">0</strong>taps</span>
-    <span><strong id="avg-display">--</strong>all-time avg</span>
+  <div class="mode-tabs" role="tablist">
+    <button class="mode-tab active" data-mode="tap" role="tab" aria-selected="true">Tap</button>
+    <button class="mode-tab" data-mode="metronome" role="tab" aria-selected="false">Metronome</button>
   </div>
 
-  <button id="reset-btn">Reset</button>
+  <!-- ── TAP VIEW ──────────────────────────────────── -->
+  <div id="view-tap" class="view active">
+    <div class="bpm-display" id="tap-bpm">--</div>
+    <div class="bpm-label">BPM</div>
 
-  <div id="hint">Tap the beat — or press Spacebar / Enter</div>
+    <button class="big-btn" id="tap-btn" aria-label="Tap to measure BPM">TAP</button>
+
+    <div class="info-row">
+      <span><strong id="tap-count">0</strong>taps</span>
+      <span><strong id="avg-display">--</strong>all-time avg</span>
+    </div>
+
+    <button class="secondary-btn" id="reset-btn">Reset</button>
+    <div class="hint">Tap the beat — or press Spacebar / Enter</div>
+  </div>
+
+  <!-- ── METRONOME VIEW ────────────────────────────── -->
+  <div id="view-metro" class="view">
+    <div class="bpm-display" id="metro-bpm" role="button" tabindex="0" title="Click to edit BPM">120</div>
+    <input class="bpm-input" id="bpm-input" type="number" min="20" max="300" aria-label="BPM value">
+    <div class="bpm-label">BPM</div>
+
+    <div class="beat-dots" id="beat-dots"></div>
+
+    <button class="big-btn" id="play-btn" aria-label="Start or stop metronome">START</button>
+
+    <div class="bpm-controls">
+      <button class="adj-btn wide" data-delta="-10">−10</button>
+      <button class="adj-btn" data-delta="-1">−</button>
+      <div class="adj-divider"></div>
+      <button class="adj-btn" data-delta="+1">+</button>
+      <button class="adj-btn wide" data-delta="+10">+10</button>
+    </div>
+
+    <div class="time-sig-row" id="time-sig-row">
+      <button class="sig-btn" data-beats="2">2/4</button>
+      <button class="sig-btn" data-beats="3">3/4</button>
+      <button class="sig-btn active" data-beats="4">4/4</button>
+      <button class="sig-btn" data-beats="6">6/8</button>
+    </div>
+  </div>
 
 <script>
-  const IDLE_TIMEOUT = 3000; // ms without tap → reset
-  const MIN_TAPS = 2;
-  const MAX_HISTORY = 8; // use last N intervals for rolling median
+// ════════════════════════════════════════════════════
+//  SHARED
+// ════════════════════════════════════════════════════
+let currentMode = 'tap';
+let lastTapBPM  = null;
 
-  let taps = [];
-  let idleTimer = null;
-  let flashTimer = null;
+// ── Mode switching ───────────────────────────────────
+const modeTabs  = document.querySelectorAll('.mode-tab');
+const viewTap   = document.getElementById('view-tap');
+const viewMetro = document.getElementById('view-metro');
 
-  const bpmDisplay = document.getElementById('bpm-display');
-  const tapCountEl = document.getElementById('tap-count');
-  const avgDisplay  = document.getElementById('avg-display');
-  const tapBtn      = document.getElementById('tap-btn');
-  const resetBtn    = document.getElementById('reset-btn');
+modeTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const mode = tab.dataset.mode;
+    if (mode === currentMode) return;
+    currentMode = mode;
 
-  function median(arr) {
-    const s = [...arr].sort((a, b) => a - b);
-    const m = Math.floor(s.length / 2);
-    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-  }
+    modeTabs.forEach(t => {
+      t.classList.toggle('active', t.dataset.mode === mode);
+      t.setAttribute('aria-selected', t.dataset.mode === mode);
+    });
 
-  function calcBPM(intervals) {
-    return 60000 / median(intervals);
-  }
+    viewTap.classList.toggle('active', mode === 'tap');
+    viewMetro.classList.toggle('active', mode === 'metronome');
 
-  function allTimeAvgBPM(intervals) {
-    const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    return 60000 / avg;
-  }
-
-  function flash() {
-    bpmDisplay.classList.add('flash');
-    clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => bpmDisplay.classList.remove('flash'), 120);
-  }
-
-  function tap() {
-    const now = performance.now();
-
-    // Reset if idle too long
-    if (taps.length && (now - taps[taps.length - 1]) > IDLE_TIMEOUT) {
-      taps = [];
+    if (mode === 'metronome' && lastTapBPM !== null) {
+      metroBPM = Math.round(lastTapBPM);
+      clampBPM();
+      renderMetroBPM();
     }
 
-    taps.push(now);
-    flash();
+    if (mode === 'tap') stopMetronome();
+  });
+});
 
-    const count = taps.length;
-    tapCountEl.textContent = count;
+// ════════════════════════════════════════════════════
+//  TAP MODE
+// ════════════════════════════════════════════════════
+const IDLE_TIMEOUT = 3000;
+const MIN_TAPS     = 2;
+const MAX_HISTORY  = 8;
 
-    if (count >= MIN_TAPS) {
-      // Calculate all intervals
-      const intervals = [];
-      for (let i = 1; i < taps.length; i++) {
-        intervals.push(taps[i] - taps[i - 1]);
-      }
+let taps       = [];
+let idleTimer  = null;
+let tapFlashTm = null;
 
-      // Rolling median (last N intervals)
-      const recent = intervals.slice(-MAX_HISTORY);
-      const bpm = calcBPM(recent);
-      bpmDisplay.textContent = Math.round(bpm);
+const tapBpmEl    = document.getElementById('tap-bpm');
+const tapCountEl  = document.getElementById('tap-count');
+const avgDisplay  = document.getElementById('avg-display');
+const tapBtn      = document.getElementById('tap-btn');
+const resetBtn    = document.getElementById('reset-btn');
 
-      // All-time average (all intervals)
-      avgDisplay.textContent = Math.round(allTimeAvgBPM(intervals));
-    }
+function median(arr) {
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
 
-    // Reset idle timer
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      taps = [];
-      tapCountEl.textContent = '0';
-      bpmDisplay.textContent = '--';
-      avgDisplay.textContent = '--';
-    }, IDLE_TIMEOUT);
+function allTimeAvgBPM(intervals) {
+  const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  return 60000 / avg;
+}
+
+function flashEl(el, ms = 120) {
+  el.classList.add('flash');
+  clearTimeout(el._flashTm);
+  el._flashTm = setTimeout(() => el.classList.remove('flash'), ms);
+}
+
+function tap() {
+  const now = performance.now();
+  if (taps.length && now - taps[taps.length - 1] > IDLE_TIMEOUT) taps = [];
+  taps.push(now);
+  flashEl(tapBpmEl);
+
+  tapCountEl.textContent = taps.length;
+
+  if (taps.length >= MIN_TAPS) {
+    const intervals = [];
+    for (let i = 1; i < taps.length; i++) intervals.push(taps[i] - taps[i - 1]);
+    const bpm     = 60000 / median(intervals.slice(-MAX_HISTORY));
+    tapBpmEl.textContent   = Math.round(bpm);
+    avgDisplay.textContent = Math.round(allTimeAvgBPM(intervals));
+    lastTapBPM = bpm;
   }
 
-  function reset() {
-    clearTimeout(idleTimer);
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
     taps = [];
-    tapCountEl.textContent = '0';
-    bpmDisplay.textContent = '--';
-    avgDisplay.textContent = '--';
+    tapCountEl.textContent  = '0';
+    tapBpmEl.textContent    = '--';
+    avgDisplay.textContent  = '--';
+  }, IDLE_TIMEOUT);
+}
+
+function resetTap() {
+  clearTimeout(idleTimer);
+  taps = [];
+  tapCountEl.textContent  = '0';
+  tapBpmEl.textContent    = '--';
+  avgDisplay.textContent  = '--';
+}
+
+tapBtn.addEventListener('pointerdown', () => tapBtn.classList.add('pressed'));
+tapBtn.addEventListener('pointerup',   () => tapBtn.classList.remove('pressed'));
+tapBtn.addEventListener('pointerleave',() => tapBtn.classList.remove('pressed'));
+tapBtn.addEventListener('click', tap);
+resetBtn.addEventListener('click', resetTap);
+
+// ════════════════════════════════════════════════════
+//  METRONOME
+// ════════════════════════════════════════════════════
+let metroBPM       = 120;
+let beatsPerBar    = 4;
+let isPlaying      = false;
+let audioCtx       = null;
+let nextBeatTime   = 0;
+let currentBeat    = 0;
+let schedTimerId   = null;
+let rafId          = null;
+let beatQueue      = [];   // { beat, audioTime }
+
+const metroBpmEl  = document.getElementById('metro-bpm');
+const bpmInputEl  = document.getElementById('bpm-input');
+const beatDotsEl  = document.getElementById('beat-dots');
+const playBtn     = document.getElementById('play-btn');
+
+function clampBPM() { metroBPM = Math.max(20, Math.min(300, metroBPM)); }
+function renderMetroBPM() { metroBpmEl.textContent = metroBPM; }
+
+// ── BPM inline edit ──────────────────────────────────
+function enterBPMEdit() {
+  bpmInputEl.value = metroBPM;
+  metroBpmEl.style.display = 'none';
+  bpmInputEl.classList.add('visible');
+  bpmInputEl.focus();
+  bpmInputEl.select();
+}
+
+function commitBPMEdit() {
+  const val = parseInt(bpmInputEl.value);
+  if (!isNaN(val)) { metroBPM = val; clampBPM(); }
+  bpmInputEl.classList.remove('visible');
+  metroBpmEl.style.display = '';
+  renderMetroBPM();
+}
+
+metroBpmEl.addEventListener('click', enterBPMEdit);
+metroBpmEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') enterBPMEdit(); });
+
+bpmInputEl.addEventListener('blur', commitBPMEdit);
+bpmInputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); bpmInputEl.blur(); }
+  if (e.key === 'Escape') { bpmInputEl.value = metroBPM; bpmInputEl.blur(); }
+});
+
+function renderDots() {
+  beatDotsEl.innerHTML = '';
+  for (let i = 0; i < beatsPerBar; i++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot' + (i === 0 ? ' accent' : '');
+    beatDotsEl.appendChild(d);
   }
+}
 
-  // Button press visual feedback
-  tapBtn.addEventListener('pointerdown', () => tapBtn.classList.add('pressed'));
-  tapBtn.addEventListener('pointerup',   () => tapBtn.classList.remove('pressed'));
-  tapBtn.addEventListener('pointerleave',() => tapBtn.classList.remove('pressed'));
+// ── Audio ────────────────────────────────────────────
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
 
-  tapBtn.addEventListener('click', tap);
-  resetBtn.addEventListener('click', reset);
+function scheduleClick(time, isAccent) {
+  const ctx  = getCtx();
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
 
-  // Keyboard: Space or Enter — with button visual feedback
-  document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' || e.code === 'Enter') {
-      e.preventDefault();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = 'sine';
+  osc.frequency.value = isAccent ? 1400 : 880;
+
+  gain.gain.setValueAtTime(0.001, time);
+  gain.gain.exponentialRampToValueAtTime(isAccent ? 0.65 : 0.38, time + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
+
+  osc.start(time);
+  osc.stop(time + 0.05);
+}
+
+// ── Lookahead scheduler ──────────────────────────────
+const LOOKAHEAD   = 0.1;   // seconds ahead to schedule audio
+const SCHED_INTV  = 25;    // ms between scheduler ticks
+
+function schedLoop() {
+  const ctx = getCtx();
+  while (nextBeatTime < ctx.currentTime + LOOKAHEAD) {
+    const isAccent = currentBeat === 0;
+    scheduleClick(nextBeatTime, isAccent);
+    beatQueue.push({ beat: currentBeat, audioTime: nextBeatTime });
+    currentBeat  = (currentBeat + 1) % beatsPerBar;
+    nextBeatTime += 60.0 / metroBPM;
+  }
+  schedTimerId = setTimeout(schedLoop, SCHED_INTV);
+}
+
+// ── Visual sync loop ─────────────────────────────────
+function visualLoop() {
+  if (!isPlaying) return;
+  const ctx = audioCtx;
+  if (ctx) {
+    const now = ctx.currentTime;
+    while (beatQueue.length && beatQueue[0].audioTime <= now) {
+      lightBeat(beatQueue.shift().beat);
+    }
+  }
+  rafId = requestAnimationFrame(visualLoop);
+}
+
+let dotOffTimer = null;
+let btnOffTimer = null;
+
+function lightBeat(beat) {
+  // Dots
+  const dots = beatDotsEl.children;
+  for (let i = 0; i < dots.length; i++) dots[i].classList.remove('lit');
+  if (dots[beat]) dots[beat].classList.add('lit');
+  clearTimeout(dotOffTimer);
+  dotOffTimer = setTimeout(() => {
+    for (let i = 0; i < dots.length; i++) dots[i].classList.remove('lit');
+  }, Math.min(200, 60000 / metroBPM * 0.4));
+
+  // BPM display flash
+  flashEl(metroBpmEl, 80);
+
+  // Button pulse
+  playBtn.classList.add('beat-pulse');
+  clearTimeout(btnOffTimer);
+  btnOffTimer = setTimeout(() => playBtn.classList.remove('beat-pulse'), 80);
+}
+
+// ── Start / Stop ─────────────────────────────────────
+function startMetronome() {
+  const ctx   = getCtx();
+  nextBeatTime = ctx.currentTime + 0.05;
+  currentBeat  = 0;
+  beatQueue    = [];
+  isPlaying    = true;
+  playBtn.textContent = 'STOP';
+  playBtn.classList.add('playing');
+  schedLoop();
+  rafId = requestAnimationFrame(visualLoop);
+}
+
+function stopMetronome() {
+  if (!isPlaying) return;
+  isPlaying = false;
+  clearTimeout(schedTimerId);
+  cancelAnimationFrame(rafId);
+  beatQueue = [];
+  playBtn.textContent = 'START';
+  playBtn.classList.remove('playing', 'beat-pulse');
+  metroBpmEl.classList.remove('flash');
+  const dots = beatDotsEl.children;
+  for (let i = 0; i < dots.length; i++) dots[i].classList.remove('lit');
+}
+
+function toggleMetronome() {
+  if (isPlaying) stopMetronome(); else startMetronome();
+}
+
+// ── Play button ──────────────────────────────────────
+playBtn.addEventListener('pointerdown', () => { if (!isPlaying) playBtn.classList.add('pressed'); });
+playBtn.addEventListener('pointerup',   () => playBtn.classList.remove('pressed'));
+playBtn.addEventListener('pointerleave',() => playBtn.classList.remove('pressed'));
+playBtn.addEventListener('click', toggleMetronome);
+
+// ── BPM adjust ───────────────────────────────────────
+document.querySelectorAll('.adj-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    metroBPM += parseInt(btn.dataset.delta);
+    clampBPM();
+    renderMetroBPM();
+  });
+});
+
+// ── Time signature ────────────────────────────────────
+document.querySelectorAll('.sig-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sig-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    beatsPerBar = parseInt(btn.dataset.beats);
+    if (isPlaying) currentBeat = 0;
+    renderDots();
+  });
+});
+
+// ════════════════════════════════════════════════════
+//  KEYBOARD
+// ════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (currentMode === 'tap') {
       tapBtn.classList.add('pressed');
       tap();
       setTimeout(() => tapBtn.classList.remove('pressed'), 100);
+    } else {
+      toggleMetronome();
     }
-  });
+  }
+  if (currentMode === 'metronome') {
+    if (e.code === 'ArrowUp')    { metroBPM++; clampBPM(); renderMetroBPM(); }
+    if (e.code === 'ArrowDown')  { metroBPM--; clampBPM(); renderMetroBPM(); }
+  }
+});
+
+// ── Init ─────────────────────────────────────────────
+renderDots();
 </script>
 </body>
 </html>
