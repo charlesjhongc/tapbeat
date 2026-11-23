@@ -674,8 +674,30 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ════════════════════════════════════════════════════
+//  WAKE LOCK — keep the screen on while the page is visible
+// ════════════════════════════════════════════════════
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator) || wakeLock || document.visibilityState !== 'visible') return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (_) {
+    // Denied (e.g. no user gesture yet, low battery) — retry on next interaction
+  }
+}
+
+// The browser releases the lock when the tab is hidden; re-acquire on return
+document.addEventListener('visibilitychange', requestWakeLock);
+// Some browsers (iOS Safari) only grant the lock after a user gesture
+document.addEventListener('pointerdown', requestWakeLock);
+document.addEventListener('keydown', requestWakeLock);
+
 // ── Init ─────────────────────────────────────────────
 renderDots();
+requestWakeLock();
 </script>
 </body>
 </html>
